@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "11.0.0-preview"
+      "version": "11.5.2"
     },
     {
       "type": "panel",
@@ -39,18 +39,12 @@
       "type": "panel",
       "id": "sebastiangunreben-cdf-panel",
       "name": "CDF - Cumulative Distribution Function",
-      "version": "0.2.7"
+      "version": "0.3.0"
     },
     {
       "type": "panel",
       "id": "state-timeline",
       "name": "State timeline",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
       "version": ""
     },
     {
@@ -126,7 +120,27 @@
               "viz": false
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "color": "transparent",
+                  "index": 0
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "empty",
+                "result": {
+                  "index": 1
+                }
+              },
+              "type": "special"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -158,6 +172,10 @@
                     {
                       "color": "red",
                       "value": null
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": -110
                     },
                     {
                       "color": "orange",
@@ -270,7 +288,7 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 1
       },
@@ -400,7 +418,7 @@
           "zoom": 18
         }
       },
-      "pluginVersion": "11.0.0-preview",
+      "pluginVersion": "11.5.2",
       "repeat": "device",
       "repeatDirection": "h",
       "targets": [
@@ -410,7 +428,7 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRP\")\n  |> filter(fn: (r) => r._value > -200)\n  |> filter(fn: (r) => r._value < -10)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
+          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRP\")\n  |> filter(fn: (r) => r._value > -200)\n  |> filter(fn: (r) => r._value < -10)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> filter(fn: (r) => exists r.latitude)\n    \n",
           "refId": "A"
         }
       ],
@@ -437,6 +455,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -466,6 +485,8 @@
             }
           },
           "mappings": [],
+          "max": -130,
+          "min": -40,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -511,11 +532,13 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "maxHeight": 600,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -523,7 +546,7 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRP\")\n  |> filter(fn: (r) => r._value > -200)\n  |> filter(fn: (r) => r._value < -10)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"RSRP\"})\n  ",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRP\")\n  |> filter(fn: (r) => r._value > -200)\n  |> filter(fn: (r) => r._value < -10)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"RSRP\"})\n  ",
           "refId": "A"
         }
       ],
@@ -553,7 +576,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           }
@@ -581,7 +605,8 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red"
+                      "color": "red",
+                      "value": null
                     },
                     {
                       "color": "orange",
@@ -690,7 +715,7 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 27
       },
@@ -815,7 +840,7 @@
           "zoom": 18
         }
       },
-      "pluginVersion": "11.0.0-preview",
+      "pluginVersion": "11.5.2",
       "repeat": "device",
       "repeatDirection": "h",
       "targets": [
@@ -825,7 +850,7 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSSINR\")\n  |> filter(fn: (r) => r._value > -100)\n  |> filter(fn: (r) => r._value < 100)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
+          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSSINR\")\n  |> filter(fn: (r) => r._value > -100)\n  |> filter(fn: (r) => r._value < 100)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> filter(fn: (r) => exists r.latitude)\n",
           "refId": "A"
         }
       ],
@@ -851,6 +876,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -881,12 +907,14 @@
           },
           "fieldMinMax": false,
           "mappings": [],
+          "max": 40,
           "min": -20,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               },
               {
                 "color": "orange",
@@ -926,18 +954,20 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "maxHeight": 600,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"SSSINR\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"SINR\"})\n",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"SSSINR\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"SINR\"})\n",
           "refId": "A"
         }
       ],
@@ -967,7 +997,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           }
@@ -995,7 +1026,8 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red"
+                      "color": "red",
+                      "value": null
                     },
                     {
                       "color": "orange",
@@ -1104,7 +1136,7 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 53
       },
@@ -1231,7 +1263,7 @@
           "zoom": 18
         }
       },
-      "pluginVersion": "11.0.0-preview",
+      "pluginVersion": "11.5.2",
       "repeat": "device",
       "repeatDirection": "h",
       "targets": [
@@ -1241,7 +1273,7 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRQ\")\n  |> filter(fn: (r) => r._value > -100)\n  |> filter(fn: (r) => r._value < 60)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n      |> yield(name: \"mean\")\n",
+          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n\nsignal = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRQ\")\n  |> filter(fn: (r) => r._value > -100)\n  |> filter(fn: (r) => r._value < 60)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, signal, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> filter(fn: (r) => exists r.latitude)",
           "refId": "A"
         }
       ],
@@ -1267,6 +1299,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1302,7 +1335,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               },
               {
                 "color": "orange",
@@ -1388,18 +1422,20 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "maxHeight": 600,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRQ\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"RSRQ\"})\n",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"${api_call}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"SSRSRQ\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> group(columns: [\"device\"])\n  |> rename(columns: {_value: \"RSRQ\"})",
           "refId": "A"
         }
       ],
@@ -1464,6 +1500,77 @@
                     "value": {
                       "mode": "continuous-RdYlGr"
                     }
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "N/A"
+                  },
+                  {
+                    "id": "max"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "PCI"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "PCI"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "altitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Altitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Latitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Longitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "_time"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Time"
                   }
                 ]
               }
@@ -1471,7 +1578,7 @@
           },
           "gridPos": {
             "h": 12,
-            "w": 12,
+            "w": 24,
             "x": 0,
             "y": 80
           },
@@ -1501,91 +1608,9 @@
                   "arrow": 0,
                   "style": {
                     "color": {
-                      "field": "bits_per_second",
-                      "fixed": "text"
+                      "fixed": "#0202ff"
                     },
                     "lineWidth": 2,
-                    "opacity": 1,
-                    "rotation": {
-                      "fixed": 0,
-                      "max": 360,
-                      "min": -360,
-                      "mode": "mod"
-                    },
-                    "size": {
-                      "fixed": 1,
-                      "max": 15,
-                      "min": 2
-                    },
-                    "symbol": {
-                      "fixed": "img/icons/marker/circle.svg",
-                      "mode": "fixed"
-                    },
-                    "textConfig": {
-                      "fontSize": 12,
-                      "offsetX": 0,
-                      "offsetY": 0,
-                      "textAlign": "center",
-                      "textBaseline": "middle"
-                    }
-                  }
-                },
-                "location": {
-                  "latitude": "latitude",
-                  "longitude": "longitude",
-                  "mode": "coords"
-                },
-                "name": "Route",
-                "opacity": 1,
-                "tooltip": true,
-                "type": "route"
-              },
-              {
-                "config": {
-                  "showLegend": true,
-                  "style": {
-                    "color": {
-                      "field": "bits_per_second",
-                      "fixed": "red"
-                    },
-                    "opacity": 1,
-                    "rotation": {
-                      "fixed": 0,
-                      "max": 360,
-                      "min": -360,
-                      "mode": "mod"
-                    },
-                    "size": {
-                      "fixed": 4,
-                      "max": 15,
-                      "min": 2
-                    },
-                    "symbol": {
-                      "fixed": "img/icons/marker/circle.svg",
-                      "mode": "fixed"
-                    },
-                    "textConfig": {
-                      "fontSize": 12,
-                      "offsetX": 0,
-                      "offsetY": 0,
-                      "textAlign": "center",
-                      "textBaseline": "middle"
-                    }
-                  }
-                },
-                "name": "iPerf3",
-                "opacity": 0.6,
-                "tooltip": true,
-                "type": "markers"
-              },
-              {
-                "config": {
-                  "rules": [],
-                  "src": "public/gazetteer/statics.geojson",
-                  "style": {
-                    "color": {
-                      "fixed": "#C4162A"
-                    },
                     "opacity": 1,
                     "rotation": {
                       "fixed": 0,
@@ -1599,8 +1624,12 @@
                       "min": 2
                     },
                     "symbol": {
-                      "fixed": "img/icons/marker/square.svg",
+                      "fixed": "img/icons/marker/circle.svg",
                       "mode": "fixed"
+                    },
+                    "symbolAlign": {
+                      "horizontal": "center",
+                      "vertical": "center"
                     },
                     "textConfig": {
                       "fontSize": 12,
@@ -1611,27 +1640,79 @@
                     }
                   }
                 },
-                "name": "Layer 3",
-                "opacity": 1,
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "A"
+                },
+                "name": "Layer 4",
+                "opacity": 0.4,
                 "tooltip": true,
-                "type": "geojson"
+                "type": "route"
+              },
+              {
+                "config": {
+                  "showLegend": true,
+                  "style": {
+                    "color": {
+                      "field": "bits_per_second",
+                      "fixed": "dark-green"
+                    },
+                    "opacity": 0.4,
+                    "rotation": {
+                      "fixed": 0,
+                      "max": 360,
+                      "min": -360,
+                      "mode": "mod"
+                    },
+                    "size": {
+                      "fixed": 5,
+                      "max": 15,
+                      "min": 2
+                    },
+                    "symbol": {
+                      "fixed": "img/icons/marker/circle.svg",
+                      "mode": "fixed"
+                    },
+                    "symbolAlign": {
+                      "horizontal": "center",
+                      "vertical": "center"
+                    },
+                    "textConfig": {
+                      "fontSize": 12,
+                      "offsetX": 0,
+                      "offsetY": 0,
+                      "textAlign": "center",
+                      "textBaseline": "middle"
+                    }
+                  }
+                },
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "B"
+                },
+                "location": {
+                  "mode": "auto"
+                },
+                "name": "Throughput",
+                "tooltip": true,
+                "type": "markers"
               }
             ],
             "tooltip": {
               "mode": "details"
             },
             "view": {
-              "allLayers": true,
+              "allLayers": false,
               "id": "fit",
               "lastOnly": false,
               "lat": 51.528433,
-              "layer": "iPerf3",
+              "layer": "Throughput",
               "lon": 7.202937,
               "shared": true,
               "zoom": 18
             }
           },
-          "pluginVersion": "11.0.0-preview",
+          "pluginVersion": "11.5.2",
           "repeat": "device",
           "repeatDirection": "h",
           "targets": [
@@ -1640,17 +1721,20 @@
                 "type": "influxdb",
                 "uid": "${DS_INFLUXDB}"
               },
-              "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n      \niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"false\")\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n\n\nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, iperf3, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n\n  \n  \n",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n      \niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"false\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"_time\", \"protocol\", \"_field\", \"measurement_name\"])\n  |> sum(column: \"_value\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"protocol\", \"_field\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n    \n\npci = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n \nunion(tables: [location, iperf3, pci])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> filter(fn: (r) => exists r.bits_per_second)\n",
+              "refId": "B"
             }
           ],
           "title": "Downlink - iPerf3 - $device",
-          "transformations": [
-            {
-              "id": "merge",
-              "options": {}
-            }
-          ],
           "type": "geomap"
         },
         {
@@ -1672,6 +1756,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -1702,6 +1787,8 @@
               },
               "displayName": "${__field.labels.device} - ${__field.labels.protocol} - ${__field.labels.connectingToHost}",
               "mappings": [],
+              "max": 1000000000,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1718,7 +1805,7 @@
             "h": 12,
             "w": 24,
             "x": 0,
-            "y": 92
+            "y": 512
           },
           "id": 41,
           "options": {
@@ -1735,11 +1822,13 @@
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
               "maxHeight": 600,
               "mode": "single",
               "sort": "desc"
             }
           },
+          "pluginVersion": "11.5.2",
           "targets": [
             {
               "datasource": {
@@ -1802,18 +1891,89 @@
                     "value": {
                       "mode": "continuous-RdYlGr"
                     }
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "N/A"
+                  },
+                  {
+                    "id": "max"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "PCI"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "PCI"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "altitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Altitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Latitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Longitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "_time"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Time"
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 12,
-            "w": 12,
+            "h": 13,
+            "w": 24,
             "x": 0,
-            "y": 104
+            "y": 524
           },
-          "id": 51,
+          "id": 73,
           "maxPerRow": 6,
           "options": {
             "basemap": {
@@ -1839,8 +1999,7 @@
                   "arrow": 0,
                   "style": {
                     "color": {
-                      "field": "bits_per_second",
-                      "fixed": "text"
+                      "fixed": "#0202ff"
                     },
                     "lineWidth": 2,
                     "opacity": 1,
@@ -1851,13 +2010,17 @@
                       "mode": "mod"
                     },
                     "size": {
-                      "fixed": 1,
+                      "fixed": 5,
                       "max": 15,
                       "min": 2
                     },
                     "symbol": {
                       "fixed": "img/icons/marker/circle.svg",
                       "mode": "fixed"
+                    },
+                    "symbolAlign": {
+                      "horizontal": "center",
+                      "vertical": "center"
                     },
                     "textConfig": {
                       "fontSize": 12,
@@ -1868,13 +2031,12 @@
                     }
                   }
                 },
-                "location": {
-                  "latitude": "latitude",
-                  "longitude": "longitude",
-                  "mode": "coords"
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "A"
                 },
-                "name": "Route",
-                "opacity": 1,
+                "name": "Layer 4",
+                "opacity": 0.4,
                 "tooltip": true,
                 "type": "route"
               },
@@ -1884,9 +2046,9 @@
                   "style": {
                     "color": {
                       "field": "bits_per_second",
-                      "fixed": "red"
+                      "fixed": "dark-green"
                     },
-                    "opacity": 1,
+                    "opacity": 0.4,
                     "rotation": {
                       "fixed": 0,
                       "max": 360,
@@ -1894,13 +2056,17 @@
                       "mode": "mod"
                     },
                     "size": {
-                      "fixed": 4,
+                      "fixed": 5,
                       "max": 15,
                       "min": 2
                     },
                     "symbol": {
                       "fixed": "img/icons/marker/circle.svg",
                       "mode": "fixed"
+                    },
+                    "symbolAlign": {
+                      "horizontal": "center",
+                      "vertical": "center"
                     },
                     "textConfig": {
                       "fontSize": 12,
@@ -1911,8 +2077,14 @@
                     }
                   }
                 },
-                "name": "iPerf3",
-                "opacity": 0.6,
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "B"
+                },
+                "location": {
+                  "mode": "auto"
+                },
+                "name": "Throughput",
                 "tooltip": true,
                 "type": "markers"
               }
@@ -1925,13 +2097,13 @@
               "id": "fit",
               "lastOnly": false,
               "lat": 51.528433,
-              "layer": "iPerf3",
+              "layer": "Throughput",
               "lon": 7.202937,
               "shared": true,
               "zoom": 18
             }
           },
-          "pluginVersion": "10.4.0",
+          "pluginVersion": "11.5.2",
           "repeat": "device",
           "repeatDirection": "h",
           "targets": [
@@ -1940,17 +2112,20 @@
                 "type": "influxdb",
                 "uid": "${DS_INFLUXDB}"
               },
-              "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n\n      \niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n\n\nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n    \n\n\nunion(tables: [location, iperf3, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n\n  \n  \n",
               "refId": "A"
-            }
-          ],
-          "title": "Uplink - iPerf3 $device",
-          "transformations": [
+            },
             {
-              "id": "merge",
-              "options": {}
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n      \niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"_time\", \"protocol\", \"_field\", \"measurement_name\"])\n  |> sum(column: \"_value\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"protocol\", \"_field\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)      \n    \n\npci = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n \nunion(tables: [location, iperf3, pci])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> filter(fn: (r) => exists r.bits_per_second)\n",
+              "refId": "B"
             }
           ],
+          "title": "Uplink - iPerf3 - $device",
           "type": "geomap"
         },
         {
@@ -1971,7 +2146,9 @@
                 "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
+                "axisSoftMin": 3,
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -2002,6 +2179,8 @@
               },
               "displayName": "${__field.labels.device} - ${__field.labels.protocol} - ${__field.labels.connectingToHost}",
               "mappings": [],
+              "max": 1000000000,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2018,7 +2197,7 @@
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 116
+            "y": 537
           },
           "id": 52,
           "options": {
@@ -2035,10 +2214,13 @@
               "sortDesc": true
             },
             "tooltip": {
+              "hideZeros": false,
+              "maxHeight": 600,
               "mode": "single",
               "sort": "desc"
             }
           },
+          "pluginVersion": "11.5.2",
           "targets": [
             {
               "datasource": {
@@ -2046,7 +2228,7 @@
                 "uid": "${DS_INFLUXDB}"
               },
               "hide": false,
-              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> keep(columns: [\"device\",\"connectingToHost\", \"_time\", \"_value\", \"streamIdx\", \"protocol\"]) \n  |> group(columns: [\"device\",\"connectingToHost\", \"_time\", \"protocol\"])\n  |> sum(column: \"_value\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"protocol\"])",
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"bits_per_second\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\" or r[\"sender\"] == \"True\")\n  |> keep(columns: [\"device\",\"connectingToHost\", \"_time\", \"_value\", \"streamIdx\", \"protocol\"]) \n  |> group(columns: [\"device\",\"connectingToHost\", \"_time\", \"protocol\"])\n  |> sum(column: \"_value\")\n  |> group(columns: [\"device\",\"connectingToHost\", \"protocol\"])",
               "refId": "Download"
             }
           ],
@@ -2054,7 +2236,532 @@
           "type": "timeseries"
         }
       ],
-      "title": "Network Quality",
+      "title": "iPerf3 - Throughput",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 80
+      },
+      "id": 75,
+      "panels": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "match": "null+nan",
+                    "result": {
+                      "color": "transparent",
+                      "index": 0
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "noValue": "N/A",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent"
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "rtt"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "µs"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-GrYlRd"
+                    }
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "RTT"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "match": "null+nan",
+                          "result": {
+                            "color": "transparent",
+                            "index": 0
+                          }
+                        },
+                        "type": "special"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "altitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Altitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "latitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Latitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "longitude"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Longitude"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "PCI"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "PCI"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "_time"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Time"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 81
+          },
+          "id": 74,
+          "maxPerRow": 6,
+          "options": {
+            "basemap": {
+              "config": {
+                "server": "world-imagery"
+              },
+              "name": "Layer 0",
+              "opacity": 0.5,
+              "type": "esri-xyz"
+            },
+            "controls": {
+              "mouseWheelZoom": false,
+              "showAttribution": true,
+              "showDebug": false,
+              "showMeasure": true,
+              "showScale": true,
+              "showZoom": true
+            },
+            "layers": [
+              {
+                "config": {
+                  "arrow": 0,
+                  "style": {
+                    "color": {
+                      "fixed": "dark-blue"
+                    },
+                    "lineWidth": 2,
+                    "opacity": 1,
+                    "rotation": {
+                      "fixed": 0,
+                      "max": 360,
+                      "min": -360,
+                      "mode": "mod"
+                    },
+                    "size": {
+                      "fixed": 1,
+                      "max": 15,
+                      "min": 2
+                    },
+                    "symbol": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "text": {
+                      "fixed": "",
+                      "mode": "field"
+                    },
+                    "textConfig": {
+                      "fontSize": 40,
+                      "offsetX": 0,
+                      "offsetY": 0,
+                      "textAlign": "center",
+                      "textBaseline": "middle"
+                    }
+                  }
+                },
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "Location"
+                },
+                "location": {
+                  "latitude": "latitude",
+                  "longitude": "longitude",
+                  "mode": "coords"
+                },
+                "name": "Route",
+                "opacity": 1,
+                "tooltip": true,
+                "type": "route"
+              },
+              {
+                "config": {
+                  "showLegend": true,
+                  "style": {
+                    "color": {
+                      "field": "rtt",
+                      "fixed": "red"
+                    },
+                    "opacity": 1,
+                    "rotation": {
+                      "fixed": 0,
+                      "max": 360,
+                      "min": -360,
+                      "mode": "mod"
+                    },
+                    "size": {
+                      "fixed": 6,
+                      "max": 20,
+                      "min": 10
+                    },
+                    "symbol": {
+                      "fixed": "img/icons/marker/circle.svg",
+                      "mode": "fixed"
+                    },
+                    "textConfig": {
+                      "fontSize": 12,
+                      "offsetX": 0,
+                      "offsetY": 0,
+                      "textAlign": "center",
+                      "textBaseline": "middle"
+                    }
+                  }
+                },
+                "filterData": {
+                  "id": "byRefId",
+                  "options": "iPerf3"
+                },
+                "location": {
+                  "latitude": "latitude",
+                  "longitude": "longitude",
+                  "mode": "auto"
+                },
+                "name": "RTT",
+                "opacity": 0.6,
+                "tooltip": true,
+                "type": "markers"
+              }
+            ],
+            "tooltip": {
+              "mode": "details"
+            },
+            "view": {
+              "allLayers": false,
+              "id": "fit",
+              "lastOnly": false,
+              "lat": 51.528433,
+              "layer": "RTT",
+              "lon": 7.202937,
+              "shared": true,
+              "zoom": 18
+            }
+          },
+          "pluginVersion": "11.5.2",
+          "repeat": "device",
+          "repeatDirection": "h",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  \n",
+              "refId": "Location"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n\niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> keep(columns: [\"device\", \"_value\", \"_time\", \"_field\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)    \n   \npci = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)    \n \nunion(tables: [location, iperf3, pci])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])",
+              "refId": "iPerf3"
+            }
+          ],
+          "title": "RTT $device",
+          "type": "geomap"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "palette-classic",
+                "seriesBy": "max"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "points",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": 2000,
+                "lineInterpolation": "smooth",
+                "lineWidth": 4,
+                "pointSize": 7,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": 5000,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 2,
+              "displayName": "iPerf3 - ${__field.labels.toHost} - ${__field.labels.device}",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red"
+                  }
+                ]
+              },
+              "unit": "µs"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 0,
+            "y": 444
+          },
+          "id": 76,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "min",
+                "max",
+                "mean",
+                "delta"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "maxHeight": 600,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.5.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> keep(columns: [\"device\", \"_value\", \"_time\", \"_field\", \"_measurement\", \"connectingToHost\"])\n  |> group(columns: [\"device\", \"connectingToHost\"])\n  |> rename(columns: {\"connectingToHost\": \"toHost\"})\n  \n",
+              "refId": "iPerf3"
+            }
+          ],
+          "title": "RTT",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "displayName": "${__field.name} - ${__field.labels.toHost} - ${__field.labels.device}",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red"
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 12,
+            "y": 444
+          },
+          "id": 77,
+          "options": {
+            "complementary": false,
+            "linewidth": 3,
+            "scaling": 1,
+            "showThresholds": false,
+            "showXGrid": true,
+            "showXThresholds": false,
+            "showYGrid": true,
+            "showYThresholds": false,
+            "thresholds": {
+              "lowerLabel": "",
+              "upper": 20,
+              "upperLabel": "20ms",
+              "upperLanel": ""
+            },
+            "xAxisExtents": {
+              "max": 100,
+              "min": 0.1
+            },
+            "xAxisTitle": {
+              "showxoffset": false,
+              "showyoffset": true,
+              "text": "ms",
+              "textSize": 1,
+              "yoffset": 30
+            },
+            "xMargins": {
+              "lower": 40,
+              "upper": 10
+            },
+            "xthresholds": {
+              "lowerLabel": "",
+              "upperLanel": ""
+            },
+            "yAxisExtents": {
+              "max": "",
+              "min": ""
+            },
+            "yAxisTitle": {
+              "showxoffset": true,
+              "showyoffset": false,
+              "text": "",
+              "textSize": 12,
+              "xoffset": 30
+            },
+            "yMargins": {
+              "lower": 40,
+              "upper": 10
+            },
+            "ythresholds": {
+              "lowerLabel": "",
+              "upperLanel": ""
+            }
+          },
+          "pluginVersion": "0.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> keep(columns: [\"device\", \"_value\", \"_time\", \"_field\", \"connectingToHost\"])\n  |> rename(columns: {\"connectingToHost\": \"toHost\"})\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> map(fn: (r) => ({ r with _value: int(v: r._value/1000.0) }))\n  |> map(fn: (r) => ({ r with _field: \"iPerf3-RTT\" }))\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n   \n\n",
+              "refId": "iPerf3"
+            }
+          ],
+          "title": "RTT CDF",
+          "type": "sebastiangunreben-cdf-panel"
+        }
+      ],
+      "title": "iPerf3 - RTT",
       "type": "row"
     },
     {
@@ -2063,11 +2770,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 80
+        "y": 81
       },
       "id": 71,
       "panels": [],
-      "title": "RTT",
+      "title": "ICMP",
       "type": "row"
     },
     {
@@ -2079,7 +2786,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "fixed"
           },
           "custom": {
             "hideFrom": {
@@ -2088,12 +2795,24 @@
               "viz": false
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "color": "transparent",
+                  "index": 1
+                }
+              },
+              "type": "special"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           }
@@ -2108,6 +2827,76 @@
               {
                 "id": "unit",
                 "value": "ms"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "RTT"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "altitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Altitude"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Latitude"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Longitude"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCI"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Time"
               }
             ]
           }
@@ -2115,9 +2904,9 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 81
+        "y": 82
       },
       "id": 39,
       "maxPerRow": 6,
@@ -2144,8 +2933,7 @@
               "arrow": 0,
               "style": {
                 "color": {
-                  "field": "rtt",
-                  "fixed": "text"
+                  "fixed": "dark-blue"
                 },
                 "lineWidth": 2,
                 "opacity": 1,
@@ -2178,10 +2966,14 @@
                 }
               }
             },
+            "filterData": {
+              "id": "byRefId",
+              "options": "Location"
+            },
             "location": {
               "latitude": "latitude",
               "longitude": "longitude",
-              "mode": "coords"
+              "mode": "auto"
             },
             "name": "Route",
             "opacity": 1,
@@ -2221,6 +3013,13 @@
                 }
               }
             },
+            "filterData": {
+              "id": "byRefId",
+              "options": "ping"
+            },
+            "location": {
+              "mode": "auto"
+            },
             "name": "RTT",
             "opacity": 0.6,
             "tooltip": true,
@@ -2235,13 +3034,13 @@
           "id": "fit",
           "lastOnly": false,
           "lat": 51.528433,
-          "layer": "RTT",
+          "layer": "Route",
           "lon": 7.202937,
           "shared": true,
           "zoom": 18
         }
       },
-      "pluginVersion": "11.0.0-preview",
+      "pluginVersion": "11.5.2",
       "repeat": "device",
       "repeatDirection": "h",
       "targets": [
@@ -2251,17 +3050,20 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n      \nping = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n\niperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> drop(columns: [\"socket\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> rename(columns: {connectingToHost: \"toHost\"})\n  |> map(fn: (r) => ({ r with _value: int(v: r._value/1000.0) }))\n  |> group(columns: [\"_time\", \"device\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {device: \"_field\"})\n\nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n    \n\n\nunion(tables: [location, ping, PCI, iperf3])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n    |> yield(name: \"mean\")\n",
-          "refId": "A"
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  \n",
+          "refId": "Location"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "hide": false,
+          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)    \n\nping = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false)  \n   \npci = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"_value\", \"_time\", \"_field\", \"device\", \"measurement_name\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)    \n \nunion(tables: [location, ping, pci])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])",
+          "refId": "ping"
         }
       ],
       "title": "RTT $device",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        }
-      ],
       "type": "geomap"
     },
     {
@@ -2284,6 +3086,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "points",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -2316,19 +3119,45 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "altitude"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "lengthm"
+              },
+              {
+                "id": "displayName",
+                "value": "Altitude"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 12,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 93
+        "y": 94
       },
       "id": 40,
       "options": {
@@ -2344,12 +3173,13 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -2357,113 +3187,12 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "iperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> drop(columns: [\"socket\"])\n  |> rename(columns: {connectingToHost: \"toHost\"})\n  |> map(fn: (r) => ({ r with rtt: int(v: r.rtt/1000.0) }))\n  |> group(columns: [\"_time\", \"device\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {device: \"_field\"})\n\nping = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\"])\n\n\nunion(tables: [ping, iperf3])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n ",
-          "refId": "B"
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)",
+          "refId": "Ping"
         }
       ],
       "title": "RTT",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red"
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 12,
-        "x": 12,
-        "y": 93
-      },
-      "id": 61,
-      "options": {
-        "complementary": false,
-        "linewidth": 3,
-        "scaling": 1,
-        "showThresholds": false,
-        "showXGrid": true,
-        "showXThresholds": false,
-        "showYGrid": true,
-        "showYThresholds": false,
-        "thresholds": {
-          "lowerLabel": "",
-          "upper": 20,
-          "upperLabel": "20ms",
-          "upperLanel": ""
-        },
-        "xAxisExtents": {
-          "max": 100,
-          "min": 0.1
-        },
-        "xAxisTitle": {
-          "showxoffset": false,
-          "showyoffset": true,
-          "text": "ms",
-          "textSize": 1,
-          "yoffset": 30
-        },
-        "xMargins": {
-          "lower": 40,
-          "upper": 10
-        },
-        "xthresholds": {
-          "lowerLabel": "",
-          "upperLanel": ""
-        },
-        "yAxisExtents": {
-          "max": "",
-          "min": ""
-        },
-        "yAxisTitle": {
-          "showxoffset": true,
-          "showyoffset": false,
-          "text": "",
-          "textSize": 12,
-          "xoffset": 30
-        },
-        "yMargins": {
-          "lower": 40,
-          "upper": 10
-        },
-        "ythresholds": {
-          "lowerLabel": "",
-          "upperLanel": ""
-        }
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "hide": false,
-          "query": "iperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> drop(columns: [\"socket\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n  |> map(fn: (r) => ({ r with _value: int(v: r._value/1000.0) }))\n\n\nping = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)\n \n\nunion(tables: [ping, iperf3])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])",
-          "refId": "B"
-        }
-      ],
-      "title": "RTT CDF",
-      "type": "sebastiangunreben-cdf-panel"
     },
     {
       "datasource": {
@@ -2483,14 +3212,17 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "fillOpacity": 50,
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "pointShape": "circle",
             "pointSize": {
               "fixed": 1
             },
+            "pointStrokeWidth": 1,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -2502,7 +3234,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           },
@@ -2536,16 +3269,29 @@
                 "value": "ms"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RTT"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize.fixed",
+                "value": 5
+              }
+            ]
           }
         ]
       },
       "gridPos": {
         "h": 13,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 105
+        "y": 106
       },
       "id": 60,
+      "maxDataPoints": 10000,
       "maxPerRow": 6,
       "options": {
         "legend": {
@@ -2558,29 +3304,43 @@
           "placement": "bottom",
           "showLegend": true
         },
+        "mapping": "manual",
         "series": [
           {
-            "name": "RTT",
-            "pointColor": {
-              "field": "RTT"
+            "color": {
+              "matcher": {
+                "id": "byName",
+                "options": "RTT"
+              }
             },
-            "pointSize": {
-              "fixed": 5,
-              "max": 50,
-              "min": 1
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
             },
-            "x": "ICMP SEQ",
-            "y": "RTT"
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "ICMP SEQ"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "RTT"
+              }
+            }
           }
         ],
-        "seriesMapping": "manual",
         "tooltip": {
+          "hideZeros": false,
           "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.5.2",
       "repeat": "device",
       "repeatDirection": "h",
       "targets": [
@@ -2590,7 +3350,7 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "rtt = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n\nicmp_seq = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"icmp_seq\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")  \n\n\nunion(tables: [rtt, icmp_seq])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")   \n    |> group()\n    |> keep(columns: [\"rtt\", \"device\", \"icmp_seq\", \"toHost\", \"_time\"])\n    |> rename(columns: {rtt:\"RTT\", icmp_seq:\"ICMP SEQ\", toHost:\"Target Host\", _time:\"Time\"})\n  \n",
+          "query": "rtt = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  \nicmp_seq = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"icmp_seq\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")  \n\nunion(tables: [rtt, icmp_seq])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")   \n    |> group()\n    |> keep(columns: [\"rtt\", \"device\", \"icmp_seq\", \"toHost\", \"_time\"])\n    |> rename(columns: {rtt:\"RTT\", icmp_seq:\"ICMP SEQ\", toHost:\"Target Host\", _time:\"Time\"})\n  \n",
           "refId": "B"
         }
       ],
@@ -2624,27 +3384,57 @@
               "mode": "none"
             }
           },
-          "displayName": "${__series.name} - ${__field.labels.toHost} - ${__field.labels.device}",
+          "displayName": "${__field.labels.toHost} - ${__field.labels.device}",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "red",
+                "value": null
               }
             ]
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Ping - 10.30.106.23 - A2",
+                  "Ping - 10.30.106.23 - cm4pi0",
+                  "Ping - 10.30.106.23 - A8"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 118
+        "y": 119
       },
       "id": 59,
+      "maxDataPoints": 10000,
+      "maxPerRow": 6,
       "options": {
         "bucketOffset": 0,
         "legend": {
@@ -2652,9 +3442,328 @@
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
         }
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "11.5.2",
+      "repeat": "device",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "hide": true,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\", \"ismi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\"])\n",
+          "refId": "A"
+        }
+      ],
+      "title": "RTT $device",
+      "type": "histogram"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 127
+      },
+      "id": 46,
+      "panels": [],
+      "title": "Cell",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "11": {
+                  "color": "super-light-blue",
+                  "index": 6
+                },
+                "22": {
+                  "color": "super-light-green",
+                  "index": 7
+                },
+                "51": {
+                  "color": "blue",
+                  "index": 0
+                },
+                "52": {
+                  "color": "yellow",
+                  "index": 1
+                },
+                "53": {
+                  "color": "purple",
+                  "index": 2
+                },
+                "61": {
+                  "color": "#1b1f39",
+                  "index": 3
+                },
+                "62": {
+                  "color": "#941a1a",
+                  "index": 4
+                },
+                "63": {
+                  "color": "#d819c2d1",
+                  "index": 5
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Latitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Longitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "altitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Altitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Time"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCI"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 128
+      },
+      "id": 72,
+      "maxPerRow": 6,
+      "options": {
+        "basemap": {
+          "config": {
+            "server": "world-imagery"
+          },
+          "name": "Layer 0",
+          "opacity": 0.4,
+          "tooltip": false,
+          "type": "esri-xyz"
+        },
+        "controls": {
+          "mouseWheelZoom": false,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": true,
+          "showScale": true,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "PCI",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.7,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "filterData": {
+              "id": "byRefId",
+              "options": "A"
+            },
+            "name": "PCI",
+            "opacity": 1,
+            "tooltip": true,
+            "type": "markers"
+          },
+          {
+            "config": {
+              "arrow": 1,
+              "style": {
+                "color": {
+                  "field": "PCI",
+                  "fixed": "dark-green"
+                },
+                "lineWidth": 2,
+                "opacity": 1,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Route",
+            "opacity": 0.5,
+            "tooltip": true,
+            "type": "route"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "fit",
+          "lastOnly": false,
+          "lat": 51.528843,
+          "layer": "Route",
+          "lon": 7.204273,
+          "padding": 60,
+          "shared": true,
+          "zoom": 18
+        }
+      },
+      "pluginVersion": "11.5.2",
+      "repeat": "device",
+      "repeatDirection": "h",
       "targets": [
         {
           "datasource": {
@@ -2662,365 +3771,615 @@
             "uid": "${DS_INFLUXDB}"
           },
           "hide": false,
-          "query": "iperf3 = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Iperf3\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"sender\"] == \"true\")\n  |> drop(columns: [\"socket\"])\n  |> map(fn: (r) => ({ r with rtt: int(v: r.rtt/1000.0) }))\n  |> rename(columns: {\"connectingToHost\":\"toHost\"})\n\nping = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r._value < 1000)\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\"])\n\n \n\nunion(tables: [ping, iperf3])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
-          "refId": "B"
+          "query": "location = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n      \n    \nPCI = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\")\n  |> filter(fn: (r) => r[\"_field\"] == \"PCI\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)\n    \n\n\nunion(tables: [location, PCI])\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> sort(columns: [\"_time\"])\n",
+          "refId": "A"
         }
       ],
-      "title": "RTT",
-      "type": "histogram"
+      "title": "Serving PCI - $device",
+      "type": "geomap"
     },
     {
-      "collapsed": true,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "fillOpacity": 65,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineWidth": 2,
+            "spanNulls": 20000
+          },
+          "mappings": [
+            {
+              "options": {
+                "11": {
+                  "color": "super-light-blue",
+                  "index": 6
+                },
+                "22": {
+                  "color": "super-light-green",
+                  "index": 7
+                },
+                "51": {
+                  "color": "blue",
+                  "index": 0
+                },
+                "52": {
+                  "color": "yellow",
+                  "index": 1
+                },
+                "53": {
+                  "color": "purple",
+                  "index": 2
+                },
+                "61": {
+                  "color": "#1b1f39",
+                  "index": 3
+                },
+                "62": {
+                  "color": "#941a1a",
+                  "index": 4
+                },
+                "63": {
+                  "color": "#d819c2d1",
+                  "index": 5
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI {android_version=\"13\", device=\"A8\", imei=\"355819291401168\", imsi=\"999970000050664\", manufacturer=\"HMD Global\", measurement_name=\"woche0\", model=\"Nokia X20\", radio_version=\"-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12,-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12\", sdk_version=\"33\", secruity_patch=\"2023-08-05\", soc_model=\"SM4350\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "A8"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI {android_version=\"13\", device=\"Z5\", imei=\"356332281214897\", imsi=\"999970000066960\", manufacturer=\"Crosscall\", measurement_name=\"woche0\", model=\"Core-Z5\", radio_version=\".3.c6-00159-KODIAK_GEN_PACK-1.32608.3.37611.2,.3.c6-00159-KODIAK_GEN_PACK-1.32608.3.37611.2\", sdk_version=\"33\", secruity_patch=\"2023-06-05\", soc_model=\"SM7325\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Z5"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI {android_version=\"13\", device=\"S21B\", imei=\"355399276738835\", imsi=\"999970000050743\", manufacturer=\"samsung\", measurement_name=\"woche0\", model=\"SM-G996B\", radio_version=\"G996BXXS9EWF3,G996BXXS9EWF3\", sdk_version=\"33\", secruity_patch=\"2023-07-01\", soc_model=\"Exynos 2100\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "S21B"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCI {android_version=\"13\", device=\"XR20\", imei=\"352179572485197\", imsi=\"999970000050748\", manufacturer=\"HMD Global\", measurement_name=\"woche0\", model=\"Nokia XR20\", radio_version=\"-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12,-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12\", sdk_version=\"33\", secruity_patch=\"2023-07-05\", soc_model=\"SM4350\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "XR20"
+              }
+            ]
+          }
+        ]
+      },
       "gridPos": {
-        "h": 1,
+        "h": 15,
         "w": 24,
         "x": 0,
-        "y": 126
+        "y": 140
       },
-      "id": 46,
-      "panels": [
+      "id": 43,
+      "options": {
+        "alignValue": "center",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.42,
+        "showValue": "auto",
+        "tooltip": {
+          "hideZeros": false,
+          "maxHeight": 600,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "fixed"
-              },
-              "custom": {
-                "fillOpacity": 65,
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineWidth": 2,
-                "spanNulls": 20000
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PCI {android_version=\"13\", device=\"A8\", imei=\"355819291401168\", imsi=\"999970000050664\", manufacturer=\"HMD Global\", measurement_name=\"woche0\", model=\"Nokia X20\", radio_version=\"-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12,-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12\", sdk_version=\"33\", secruity_patch=\"2023-08-05\", soc_model=\"SM4350\"}"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "A8"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PCI {android_version=\"13\", device=\"Z5\", imei=\"356332281214897\", imsi=\"999970000066960\", manufacturer=\"Crosscall\", measurement_name=\"woche0\", model=\"Core-Z5\", radio_version=\".3.c6-00159-KODIAK_GEN_PACK-1.32608.3.37611.2,.3.c6-00159-KODIAK_GEN_PACK-1.32608.3.37611.2\", sdk_version=\"33\", secruity_patch=\"2023-06-05\", soc_model=\"SM7325\"}"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Z5"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PCI"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "continuous-GrYlRd"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PCI {android_version=\"13\", device=\"S21B\", imei=\"355399276738835\", imsi=\"999970000050743\", manufacturer=\"samsung\", measurement_name=\"woche0\", model=\"SM-G996B\", radio_version=\"G996BXXS9EWF3,G996BXXS9EWF3\", sdk_version=\"33\", secruity_patch=\"2023-07-01\", soc_model=\"Exynos 2100\"}"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "S21B"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PCI {android_version=\"13\", device=\"XR20\", imei=\"352179572485197\", imsi=\"999970000050748\", manufacturer=\"HMD Global\", measurement_name=\"woche0\", model=\"Nokia XR20\", radio_version=\"-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12,-01086.1-MANNAR_GEN_PACK-1.501374.2.520129.12\", sdk_version=\"33\", secruity_patch=\"2023-07-05\", soc_model=\"SM4350\"}"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "XR20"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 15,
-            "w": 24,
-            "x": 0,
-            "y": 177
-          },
-          "id": 43,
-          "options": {
-            "alignValue": "center",
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "mergeValues": true,
-            "rowHeight": 0.42,
-            "showValue": "auto",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "10.0.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "influxdb",
-                "uid": "${DS_INFLUXDB}"
-              },
-              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\" and (r[\"_field\"] == \"MCC\" and r._value == 999 or r[\"_field\"] == \"PCI\"))\n  |> filter(fn: (r) => r._value > 50)\n  |> filter(fn: (r) => r._value < 70)\n  |> keep(columns: [\"PCI\", \"device\", \"_time\", \"_value\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> yield(name: \"last\")",
-              "refId": "A"
-            }
-          ],
-          "title": "current PCI",
-          "type": "state-timeline"
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"CellInformation\" and (r[\"_field\"] == \"MCC\" and r._value == 999 or r[\"_field\"] == \"PCI\"))\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> keep(columns: [\"PCI\", \"device\", \"_time\", \"_value\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> yield(name: \"last\")",
+          "refId": "A"
         }
       ],
-      "title": "Cell",
+      "title": "current PCI",
+      "type": "state-timeline"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 155
+      },
+      "id": 78,
+      "panels": [],
+      "title": "Gyro Data",
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "continuous-YlRd"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "from": 0,
+                "result": {
+                  "index": 1,
+                  "text": "0"
+                },
+                "to": 0.01
+              },
+              "type": "range"
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Latitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Longitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "altitude"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Altitude"
+              },
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Time"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 156
+      },
+      "id": 79,
+      "maxPerRow": 6,
+      "options": {
+        "basemap": {
+          "config": {
+            "server": "world-imagery"
+          },
+          "name": "Layer 0",
+          "opacity": 0.4,
+          "tooltip": false,
+          "type": "esri-xyz"
+        },
+        "controls": {
+          "mouseWheelZoom": false,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": true,
+          "showScale": true,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "arrow": 1,
+              "style": {
+                "color": {
+                  "field": "speed",
+                  "fixed": "dark-green"
+                },
+                "lineWidth": 2,
+                "opacity": 1,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Route",
+            "opacity": 0.5,
+            "tooltip": true,
+            "type": "route"
+          },
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "speed",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.4,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "filterData": {
+              "id": "byRefId",
+              "options": "A"
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Speed km/h",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "fit",
+          "lastOnly": false,
+          "lat": 51.528843,
+          "layer": "Route",
+          "lon": 7.204273,
+          "padding": 60,
+          "shared": true,
+          "zoom": 18
+        }
+      },
+      "pluginVersion": "11.5.2",
+      "repeat": "device",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"latitude\" or r[\"_field\"] == \"longitude\" or r[\"_field\"] == \"speed\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> filter(fn: (r) => r._value != -1.0, onEmpty: \"keep\")\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> filter(fn: (r) => not exists r.latitude)\n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: false)\n        |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Speed - $device",
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [
+            {
+              "options": {
+                "from": 0,
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                },
+                "to": 0.01
+              },
+              "type": "range"
+            }
+          ],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "auto"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "altitude"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthm"
+              },
+              {
+                "id": "displayName",
+                "value": "Altitude - ${__field.labels.device}"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "speed"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "velocitykmh"
+              },
+              {
+                "id": "displayName",
+                "value": "Speed - ${__field.labels.device}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 168
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "maxHeight": 600,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"speed\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] =~ /^${device:regex}/)\n  |> drop(columns: [\"CI\", \"_measurement\", \"_start\", \"_stop\", \"imsi\", \"imei\"])\n  |> filter(fn: (r) => not exists r.latitude)\n  |> filter(fn: (r) => r._value != 0.0, onEmpty: \"keep\")\n  |> aggregateWindow(every: ${Interval}, fn: last, createEmpty: false)",
+          "refId": "A"
+        }
+      ],
+      "title": " Speed",
+      "type": "timeseries"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 127
+        "y": 179
       },
       "id": 55,
       "panels": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false,
-                "minWidth": 160
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 0,
-            "y": 178
-          },
-          "id": 14,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "enablePagination": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": false
-          },
-          "pluginVersion": "10.4.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "influxdb",
-                "uid": "${DS_INFLUXDB}"
-              },
-              "query": "from(bucket: \"${bucket}\")\n  |> range(start: 0, stop: now())\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> filter(fn: (r) => r[\"device\"] == \"${device}\")\n  |> keep(columns: [\"_time\"])\n  |> last(column: \"_time\")",
-              "refId": "A"
-            }
-          ],
-          "title": "Last Timestamp (UTC)",
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "auto"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "altitude"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "lengthm"
-                  },
-                  {
-                    "id": "displayName",
-                    "value": "altitude"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "speed"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "velocitykmh"
-                  },
-                  {
-                    "id": "displayName",
-                    "value": "speed"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 182
-          },
-          "id": 18,
-          "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull",
-                "min",
-                "max"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "influxdb",
-                "uid": "${DS_INFLUXDB}"
-              },
-              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Location\")\n  |> filter(fn: (r) => r[\"_field\"] == \"altitude\" or r[\"_field\"] == \"speed\")\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n   |> filter(fn: (r) => r[\"device\"] == \"^${device}\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
-              "refId": "A"
-            }
-          ],
-          "title": "Altitude  (over NN) / Speed",
-          "type": "timeseries"
-        },
         {
           "datasource": {
             "type": "influxdb",
@@ -3039,6 +4398,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 0,
                 "gradientMode": "none",
@@ -3085,7 +4445,7 @@
             "h": 15,
             "w": 24,
             "x": 0,
-            "y": 190
+            "y": 233
           },
           "id": 63,
           "options": {
@@ -3096,11 +4456,13 @@
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
+              "maxHeight": 600,
               "mode": "single",
               "sort": "none"
             }
           },
-          "pluginVersion": "10.0.0",
+          "pluginVersion": "11.5.2",
           "targets": [
             {
               "datasource": {
@@ -3114,6 +4476,116 @@
           ],
           "title": "RTT",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "displayName": "RTT - ${__field.labels.toHost} - ${__field.labels.device}",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red"
+                  }
+                ]
+              },
+              "unit": "ms"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "rtt"
+                },
+                "properties": []
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 0,
+            "y": 248
+          },
+          "id": 61,
+          "options": {
+            "complementary": false,
+            "linewidth": 3,
+            "scaling": 1,
+            "showThresholds": false,
+            "showXGrid": true,
+            "showXThresholds": false,
+            "showYGrid": true,
+            "showYThresholds": false,
+            "thresholds": {
+              "lowerLabel": "",
+              "upper": 20,
+              "upperLabel": "20ms",
+              "upperLanel": ""
+            },
+            "xAxisExtents": {
+              "max": 100,
+              "min": 0.1
+            },
+            "xAxisTitle": {
+              "showxoffset": false,
+              "showyoffset": true,
+              "text": "ms",
+              "textSize": 1,
+              "yoffset": 30
+            },
+            "xMargins": {
+              "lower": 40,
+              "upper": 10
+            },
+            "xthresholds": {
+              "lowerLabel": "",
+              "upperLanel": ""
+            },
+            "yAxisExtents": {
+              "max": "",
+              "min": ""
+            },
+            "yAxisTitle": {
+              "showxoffset": true,
+              "showyoffset": false,
+              "text": "",
+              "textSize": 12,
+              "xoffset": 30
+            },
+            "yMargins": {
+              "lower": 40,
+              "upper": 10
+            },
+            "ythresholds": {
+              "lowerLabel": "",
+              "upperLanel": ""
+            }
+          },
+          "pluginVersion": "0.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${DS_INFLUXDB}"
+              },
+              "hide": false,
+              "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"Ping\")\n  |> filter(fn: (r) => r[\"_field\"] == \"rtt\")\n  |> filter(fn: (r) => r[\"device\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"measurement_name\"] == \"${data_source}\")\n  |> drop(columns: [\"icmp_seq\", \"imsi\", \"imei\"])\n  \n  |> aggregateWindow(every: ${Interval}, fn: mean, createEmpty: true)",
+              "refId": "Ping"
+            }
+          ],
+          "title": "RTT CDF",
+          "type": "sebastiangunreben-cdf-panel"
         }
       ],
       "title": "Debug",
@@ -3121,7 +4593,7 @@
     }
   ],
   "refresh": "",
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "tags": [
     "FINAL"
   ],
@@ -3134,17 +4606,13 @@
           "uid": "${DS_INFLUXDB}"
         },
         "definition": "buckets()",
-        "hide": 0,
         "includeAll": false,
         "label": "Bucket",
-        "multi": false,
         "name": "bucket",
         "options": [],
         "query": "buckets()",
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
@@ -3154,17 +4622,13 @@
           "uid": "${DS_INFLUXDB}"
         },
         "definition": "customTagValues = (bucket, tag, predicate=(r) => true, start=v.timeRangeStart, stop=v.timeRangeStop) =>\n  from(bucket: bucket)\n    |> range(start: start, stop: stop)\n    |> filter(fn: predicate)\n    |> keep(columns: [tag])\n    |> group()\n    |> distinct(column: tag)\n\ncustomTagValues(bucket: \"${bucket}\", tag: \"measurement_name\")",
-        "hide": 0,
         "includeAll": false,
         "label": "Measurement",
-        "multi": false,
         "name": "data_source",
         "options": [],
         "query": "customTagValues = (bucket, tag, predicate=(r) => true, start=v.timeRangeStart, stop=v.timeRangeStop) =>\n  from(bucket: bucket)\n    |> range(start: start, stop: stop)\n    |> filter(fn: predicate)\n    |> keep(columns: [tag])\n    |> group()\n    |> distinct(column: tag)\n\ncustomTagValues(bucket: \"${bucket}\", tag: \"measurement_name\")",
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
@@ -3175,7 +4639,6 @@
         },
         "definition": "customTagValues = (bucket, tag, predicate=(r) => true, start=v.timeRangeStart, stop=v.timeRangeStop) =>\n  from(bucket: bucket)\n    |> range(start: start, stop: stop)\n    |> filter(fn: predicate)\n    |> keep(columns: [tag])\n    |> group()\n    |> distinct(column: tag)\n\ncustomTagValues(bucket: \"${bucket}\", tag: \"device\")",
         "description": "Choose Device",
-        "hide": 0,
         "includeAll": false,
         "label": "Device",
         "multi": true,
@@ -3184,7 +4647,6 @@
         "query": "customTagValues = (bucket, tag, predicate=(r) => true, start=v.timeRangeStart, stop=v.timeRangeStop) =>\n  from(bucket: bucket)\n    |> range(start: start, stop: stop)\n    |> filter(fn: predicate)\n    |> keep(columns: [tag])\n    |> group()\n    |> distinct(column: tag)\n\ncustomTagValues(bucket: \"${bucket}\", tag: \"device\")",
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
         "type": "query"
       },
@@ -3193,18 +4655,11 @@
         "auto_count": 500,
         "auto_min": "1s",
         "current": {
-          "selected": false,
-          "text": "auto",
-          "value": "$__auto_interval_Interval"
+          "text": "5s",
+          "value": "5s"
         },
-        "hide": 0,
         "name": "Interval",
         "options": [
-          {
-            "selected": true,
-            "text": "auto",
-            "value": "$__auto_interval_Interval"
-          },
           {
             "selected": false,
             "text": "200ms",
@@ -3221,7 +4676,7 @@
             "value": "2s"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "5s",
             "value": "5s"
           },
@@ -3242,22 +4697,17 @@
           }
         ],
         "query": "200ms,1s,2s,5s,10s,1m,10m",
-        "queryValue": "",
         "refresh": 2,
-        "skipUrlSync": false,
         "type": "interval"
       },
       {
         "current": {
-          "selected": false,
           "text": "CellInformation",
           "value": "CellInformation"
         },
         "description": "",
-        "hide": 0,
         "includeAll": false,
         "label": "API",
-        "multi": false,
         "name": "api_call",
         "options": [
           {
@@ -3272,19 +4722,47 @@
           }
         ],
         "query": "CellInformation, SignalStrength",
-        "queryValue": "",
-        "skipUrlSync": false,
         "type": "custom"
+      },
+      {
+        "current": {
+          "text": "0",
+          "value": "0"
+        },
+        "name": "MinAltitude",
+        "options": [
+          {
+            "selected": true,
+            "text": "0",
+            "value": "0"
+          }
+        ],
+        "query": "0",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "1000",
+          "value": "1000"
+        },
+        "name": "MaxAltitude",
+        "options": [
+          {
+            "selected": true,
+            "text": "1000",
+            "value": "1000"
+          }
+        ],
+        "query": "1000",
+        "type": "textbox"
       }
     ]
   },
   "time": {
-    "from": "2023-11-09T16:51:56.689Z",
-    "to": "2023-11-09T17:41:18.622Z"
+    "from": "2023-11-09T16:16:29.711Z",
+    "to": "2023-11-09T17:52:42.834Z"
   },
-  "timeRangeUpdatedDuringEditOrView": false,
   "timepicker": {
-    "hidden": false,
     "nowDelay": "",
     "refresh_intervals": [
       "500ms",
@@ -3299,23 +4777,11 @@
       "1h",
       "2h",
       "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ],
-    "type": "timepicker"
+    ]
   },
   "timezone": "browser",
   "title": "Detail - 5G",
   "uid": "d738fce4-722f-47d4-8163-76b135642500",
-  "version": 268,
+  "version": 37,
   "weekStart": "monday"
 }
